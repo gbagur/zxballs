@@ -15,6 +15,9 @@ string:
    db %00111100
 STRING_LENGTH  = $ - string
 
+string_swipped:
+   db 0,0,0,0,0,0,0,0
+   
 background_tile:
    db $55,0,$AA,0,$55,0,$AA,0
 
@@ -36,10 +39,10 @@ start:
     halt
 gameloop:    
     call record_backround
-    call printball
+    call print_ball
     ld a, 4
     call wait_routine
-    call recover_background
+    call print_recorded_background
     inc b
     inc c
     ld a,20
@@ -76,15 +79,20 @@ deleteball:
 
     ret
     
-printball:
+print_ball:
     ld de,string
     call printchar
     ret
 
-recover_background:
+print_recorded_background:
     ld de,background_buffer
     ;ld de,background_tile
+    push bc
+    ld a,b
+    and $F8
+    ld b, a
     call printchar
+    pop bc
     ret
 
 record_backround:
@@ -93,11 +101,52 @@ record_backround:
     ld de,background_buffer
     call transferchar
     ret
-
+    
 printchar:
+    ; arguments: b=x_pos   c=y_pos
+    ;            de = char memory position
     ld a,0              ; 0=mem2video
     ld (temp_var), a
+    push bc
+    ld a,b                      ; record x2 x1 x0
+    and $07
+    srl b                       ; remove last 3 bits from x
+    srl b
+    srl b
+    cp a,0
+    jr z, dont_swipe_it
+    call swipe_bitmap_right
+    ld de, string_swipped
+dont_swipe_it:
     call transferchar
+    pop bc
+    ret
+
+swipe_bitmap_right:
+    ; argument a= bits to swipe
+    ;          de = char memory position
+    push bc
+    push de         ; save char memory address
+    push hl
+    ld l,a          ; swipe counter max stored in l
+    ld b,8          ; restart rows counter
+    ld ix, string_swipped
+swipe_bitmap_right_next_row:    
+    ld c,l          ; restart swipe counter
+    ld a,(de)       ;load a with the byte row
+swipe_bitmap_right_swipe_loop:    
+    srl a           ; swipe data
+    dec c           ; decrement swipe counter
+    jr nz, swipe_bitmap_right_swipe_loop
+    ld (ix),a       ; store swiped value
+    inc de          ; go to next char memory address row
+    inc ix
+    dec b           ; decrement row counter
+    jr nz, swipe_bitmap_right_next_row
+    
+    pop hl
+    pop de         ;recover char memoery address
+    pop bc
     ret
 
 transferchar:
@@ -163,8 +212,11 @@ draw_background_topbot_loop:
     ;ld de,background_tile               ; load the address of the char bitmap
     inc de
     call printchar
-    inc b                               ; increment x pos
-    ld a,32                           
+    ld a,b
+    add 8                            ; increment x pos
+    ld b,a
+    ;inc b
+    ld a,256
     cp b                                ; compare x pos with 32 to detect end of columns
     jp nz,draw_background_topbot_loop
     ld b,0                              ; reset starting x pos
