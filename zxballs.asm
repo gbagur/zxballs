@@ -15,8 +15,14 @@ string:
    db %00111100
 STRING_LENGTH  = $ - string
 
-background_buffer
+background_tile:
+   db $55,0,$AA,0,$55,0,$AA,0
+
+background_buffer:
    db 0,0,0,0,0,0,0,0
+
+temp_var:
+   db 0
    
 start:
     call draw_background
@@ -31,7 +37,8 @@ start:
 gameloop:    
     call record_backround
     call printball
-    halt
+    ld a, 4
+    call wait_routine
     call recover_background
     inc b
     inc c
@@ -76,59 +83,28 @@ printball:
 
 recover_background:
     ld de,background_buffer
+    ;ld de,background_tile
     call printchar
     ret
 
 record_backround:
-; arguments: b=x_pos   c=y_pos
-;            de = backgound buffer memory position
-; variable: video memory: hl
+    ld a,1                  ; 1=video2mem
+    ld (temp_var), a
     ld de,background_buffer
-    ex af,af'
-    push bc
-    push de
-    exx
-    pop de
-    pop bc
-    ld h, $40
-; use x3-7
-    ld l,b
-; write y3y4y5
-    ld a,c
-    sla a
-    sla a
-    sla a
-    sla a
-    sla a
-    and $E0
-    or l
-    ld l,a
-; write y6y7
-    ld a,c
-    and $18
-    or h
-    ld h,a
-; now we have the video coordinates on hl
-    push bc
-    ld b,STRING_LENGTH
-loop2:
-    ld a,(hl)           ; load a with the byte row of the background
-    ld (de),a           ; load background byte row into buffer
-    inc de              ; go to next sprite byte row
-    inc h               ; go to next row in the video memory
-    dec b               ; decrement row counter
-    jr nz,loop2           ; if B not zero, jump back to top of loop (condition,relative)
-    pop bc
-    exx
-    ex af,af'
+    call transferchar
     ret
 
 printchar:
+    ld a,0              ; 0=mem2video
+    ld (temp_var), a
+    call transferchar
+    ret
+
+transferchar:
 ; arguments: b=x_pos   c=y_pos
 ;            de = char memory position
+;            a = direction    ->  0=mem2video   ; 1=video2mem
 ; variable: video memory: hl
-
-    ex af,af'
     push bc
     push de
     exx
@@ -155,23 +131,37 @@ printchar:
 ; now we have the video coordinates on hl
     push bc
     ld b,STRING_LENGTH
-loop:
+    ld a,(temp_var)
+    cp a,0
+    jp nz, video2mem    ; decides direction of transfer
+mem2video:
     ld a,(de)           ; load a with the byte row
     ld (hl),a           ; load byte row into video memory
     inc de              ; go to next sprite byte row
     inc h               ; go to next row in the video memory
     dec b               ; decrement row counter
-    jr nz,loop           ; if B not zero, jump back to top of loop (condition,relative)
+    jr nz,mem2video           ; if B not zero, jump back to top of loop (condition,relative)
     pop bc
     exx
-    ex af,af'
+    ret
+video2mem:
+    ld a,(hl)           ; load a with the byte row
+    ld (de),a           ; load byte row into video memory
+    inc de              ; go to next sprite byte row
+    inc h               ; go to next row in the video memory
+    dec b               ; decrement row counter
+    jr nz,video2mem           ; if B not zero, jump back to top of loop (condition,relative)
+    pop bc
+    exx
     ret
 
 draw_background:
     ld b,0                              ; starting x pos
     ld c,0                              ; starting y pos
+    ld de,20
 draw_background_topbot_loop:
-    ld de,10                            ; load the address of the char bitmap
+    ;ld de,background_tile               ; load the address of the char bitmap
+    inc de
     call printchar
     inc b                               ; increment x pos
     ld a,32                           
