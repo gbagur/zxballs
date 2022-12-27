@@ -4,7 +4,7 @@ ROM_CLS        = $0DAF  ; ROM address for "Clear Screen" routine
     org $8000
     jp start
     
-string:
+ball_sprite:
    db %00111100
    db %01000010
    db %10000001
@@ -13,10 +13,26 @@ string:
    db %10111101
    db %01000010
    db %00111100
-STRING_LENGTH  = $ - string
 
-string_swipped:
-   db 0,0,0,0,0,0,0,0
+ball_sprite_LENGTH  = $ - ball_sprite
+
+ball_sprite_mask:
+   db %11000011
+   db %10000001
+   db %00000000
+   db %00000000
+   db %00000000
+   db %00000000
+   db %10000001
+   db %11000011
+
+
+
+sprite_swipped         db 0,0,0,0,0,0,0,0
+sprite_swipped_bis     db 0,0,0,0,0,0,0,0
+
+sprite_mask_swipped         db 0,0,0,0,0,0,0,0
+sprite_mask_swipped_bis     db 0,0,0,0,0,0,0,0
    
 background_tile:
    db $55,0,$AA,0,$55,0,$AA,0
@@ -80,8 +96,9 @@ deleteball:
     ret
     
 print_ball:
-    ld de,string
-    call printchar
+    ld de,ball_sprite
+    ld hl,ball_sprite_mask    
+    call printsprite
     ret
 
 print_recorded_background:
@@ -98,66 +115,143 @@ print_recorded_background:
 record_backround:
     ld a,1                  ; 1=video2mem
     ld (temp_var), a
-    ld de,background_buffer
+    ld ix,background_buffer
     call transferchar
     ret
     
 printchar:
     ; arguments: b=x_pos   c=y_pos
     ;            de = char memory position
-    ld a,0              ; 0=mem2video
-    ld (temp_var), a
+    ;            hl = char mask position
     push bc
     ld a,b                      ; record x2 x1 x0
     and $07
     srl b                       ; remove last 3 bits from x
     srl b
     srl b
-    cp a,0
-    jr z, dont_swipe_it
-    call swipe_bitmap_right
-    ld de, string_swipped
-dont_swipe_it:
+    ld ix, de
+    ld a,0              ; 0 = mem2video
+    ld (temp_var), a
     call transferchar
-    pop bc
+    pop bc                       ;recover x,y postion including x2 x1 x0
+    ret
+
+printsprite:
+    ; arguments: b=x_pos   c=y_pos
+    ;            de = char memory position
+    ;            hl = char mask position
+    push bc
+    ld a,b                      ; record x2 x1 x0
+    and $07
+    srl b                       ; remove last 3 bits from x
+    srl b
+    srl b
+swipe_it:    
+    ld ix, de                    ;load origin address
+    ld iy, sprite_swipped        ;load destination address
+    call swipe_bitmap_right      
+    ld ix, hl                    ;load origin address
+    ld iy, sprite_mask_swipped   ;load destination address    
+    call swipe_bitmap_mask_right
+    
+    ld ix, sprite_mask_swipped
+    ld a,2              ; 2 = apply mask (AND)
+    ld (temp_var), a
+    call transferchar
+    ld ix, sprite_swipped
+    ld a,3              ; 3= apply sprite (OR)
+    ld (temp_var), a
+    call transferchar
+    pop bc                       ;recover x,y postion including x2 x1 x0
     ret
 
 swipe_bitmap_right:
     ; argument a= bits to swipe
-    ;          de = char memory position
+    ;       ix = origin char memory position
+    ;       iy = destination
+    push af
+    push ix
+    push iy
     push bc
-    push de         ; save char memory address
+    push de
     push hl
     ld l,a          ; swipe counter max stored in l
     ld b,8          ; restart rows counter
-    ld ix, string_swipped
 swipe_bitmap_right_next_row:    
     ld c,l          ; restart swipe counter
-    ld a,(de)       ;load a with the byte row
+    ld d,(ix)       ;load a with the byte row
 swipe_bitmap_right_swipe_loop:    
-    srl a           ; swipe data
+    ld a,c
+    cp a,0
+    jr z, skip_swap
+    srl d           ; swipe data
     dec c           ; decrement swipe counter
     jr nz, swipe_bitmap_right_swipe_loop
-    ld (ix),a       ; store swiped value
-    inc de          ; go to next char memory address row
-    inc ix
+skip_swap:    
+    ld (iy),d       ; store swiped value
+    inc ix          ; go to next char memory address row
+    inc iy
     dec b           ; decrement row counter
     jr nz, swipe_bitmap_right_next_row
     
     pop hl
-    pop de         ;recover char memoery address
+    pop de
     pop bc
+    pop iy
+    pop ix
+    pop af
+    ret
+
+swipe_bitmap_mask_right:
+    ; argument a= bits to swipe
+    ;       ix = origin char memory position
+    ;       iy = destination
+    push af
+    push ix
+    push iy
+    push bc
+    push de
+    push hl
+    ld l,a          ; swipe counter max stored in l
+    ld b,8          ; restart rows counter
+swipe_bitmap_right_next_row2:    
+    ld c,l          ; restart swipe counter
+    ld d,(ix)       ;load a with the byte row
+swipe_bitmap_right_swipe_loop2:    
+    ld a,c
+    cp a,0
+    jr z, skip_swap2
+    srl d           ; swipe data
+    ld a,d
+    or $80          ; add '1' to msb to keep mask on
+    ld d,a
+    dec c           ; decrement swipe counter
+    jr nz, swipe_bitmap_right_swipe_loop2
+skip_swap2:  
+    ld (iy),d       ; store swiped value
+    inc ix          ; go to next char memory address row
+    inc iy
+    dec b           ; decrement row counter
+    jr nz, swipe_bitmap_right_next_row2
+    
+    pop hl
+    pop de
+    pop bc
+    pop iy
+    pop ix
+    pop af
     ret
 
 transferchar:
 ; arguments: b=x_pos   c=y_pos
-;            de = char memory position
-;            a = direction    ->  0=mem2video   ; 1=video2mem
-; variable: video memory: hl
+;            ix = char memory position
+;            a = direction    ->  0=mem2video   ; 1=video2mem 
+;                                 2=apply mask  ; 3=apply sprite
+; variable hl = video memory
     push bc
-    push de
+    push ix
     exx
-    pop de
+    pop ix
     pop bc
     ld h, $40
 ; use x3-7
@@ -179,14 +273,19 @@ transferchar:
     ld h,a
 ; now we have the video coordinates on hl
     push bc
-    ld b,STRING_LENGTH
+    ld b,ball_sprite_LENGTH
     ld a,(temp_var)
-    cp a,0
-    jp nz, video2mem    ; decides direction of transfer
+    jp z, mem2video    ; decides direction of transfer
+    dec a
+    jp z, video2mem    ; decides direction of transfer
+    dec a
+    jp z, applymask    ; decides direction of transfer
+    dec a
+    jp z, applysprite    ; decides direction of transfer
 mem2video:
-    ld a,(de)           ; load a with the byte row
+    ld a,(ix)           ; load a with the byte row
     ld (hl),a           ; load byte row into video memory
-    inc de              ; go to next sprite byte row
+    inc ix              ; go to next sprite byte row
     inc h               ; go to next row in the video memory
     dec b               ; decrement row counter
     jr nz,mem2video           ; if B not zero, jump back to top of loop (condition,relative)
@@ -195,14 +294,37 @@ mem2video:
     ret
 video2mem:
     ld a,(hl)           ; load a with the byte row
-    ld (de),a           ; load byte row into video memory
-    inc de              ; go to next sprite byte row
+    ld (ix),a           ; load byte row into video memory
+    inc ix              ; go to next sprite byte row
     inc h               ; go to next row in the video memory
     dec b               ; decrement row counter
     jr nz,video2mem           ; if B not zero, jump back to top of loop (condition,relative)
     pop bc
     exx
     ret
+applymask:
+    ld a,(hl)           ; load a with video info
+    and (ix)            ; apply the mask to the video info
+    ld (hl),a           ; save it back to the video mem
+    inc ix              ; go to next sprite byte row
+    inc h               ; go to next row in the video memory
+    dec b               ; decrement row counter
+    jr nz,applymask           ; if B not zero, jump back to top of loop (condition,relative)
+    pop bc
+    exx
+    ret
+applysprite:
+    ld a,(ix)           ; load a with the byte row
+    or (hl)
+    ld (hl),a           ; load byte row into video memory
+    inc ix              ; go to next sprite byte row
+    inc h               ; go to next row in the video memory
+    dec b               ; decrement row counter
+    jr nz,applysprite           ; if B not zero, jump back to top of loop (condition,relative)
+    pop bc
+    exx
+    ret
+        
 
 draw_background:
     ld b,0                              ; starting x pos
@@ -216,8 +338,8 @@ draw_background_topbot_loop:
     add 8                            ; increment x pos
     ld b,a
     ;inc b
-    ld a,256
-    cp b                                ; compare x pos with 32 to detect end of columns
+    ld a,0
+    cp b                                ; compare x pos with 256 (0) to detect end of columns
     jp nz,draw_background_topbot_loop
     ld b,0                              ; reset starting x pos
     inc c                               ; go to next row
