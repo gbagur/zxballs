@@ -113,10 +113,15 @@ print_recorded_background:
     ret
 
 record_backround:
+    push bc
+    srl b                       ; remove last 3 bits from x
+    srl b
+    srl b
     ld a,1                  ; 1=video2mem
     ld (temp_var), a
     ld ix,background_buffer
     call transferchar
+    pop bc
     ret
     
 printchar:
@@ -329,10 +334,11 @@ applysprite:
 draw_background:
     ld b,0                              ; starting x pos
     ld c,0                              ; starting y pos
-    ld de,20
+    ld de,15360  
+    ld hl,8
 draw_background_topbot_loop:
     ;ld de,background_tile               ; load the address of the char bitmap
-    inc de
+    add de,hl
     call printchar
     ld a,b
     add 8                            ; increment x pos
