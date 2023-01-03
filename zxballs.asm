@@ -1,9 +1,79 @@
     DEVICE ZXSPECTRUM48
+;include 'graphics.asm'
 
 ROM_CLS        = $0DAF  ; ROM address for "Clear Screen" routine    
     org $8000
     jp start
-    
+
+video_conversion_h: 
+   db  064, 065, 066, 067, 068, 069, 070, 071
+   db  064, 065, 066, 067, 068, 069, 070, 071
+   db  064, 065, 066, 067, 068, 069, 070, 071
+   db  064, 065, 066, 067, 068, 069, 070, 071
+   db  064, 065, 066, 067, 068, 069, 070, 071
+   db  064, 065, 066, 067, 068, 069, 070, 071
+   db  064, 065, 066, 067, 068, 069, 070, 071
+   db  064, 065, 066, 067, 068, 069, 070, 071
+   db  072, 073, 074, 075, 076, 077, 078, 079
+   db  072, 073, 074, 075, 076, 077, 078, 079
+   db  072, 073, 074, 075, 076, 077, 078, 079
+   db  072, 073, 074, 075, 076, 077, 078, 079
+   db  072, 073, 074, 075, 076, 077, 078, 079
+   db  072, 073, 074, 075, 076, 077, 078, 079
+   db  072, 073, 074, 075, 076, 077, 078, 079
+   db  072, 073, 074, 075, 076, 077, 078, 079
+   db  080, 081, 082, 083, 084, 085, 086, 087
+   db  080, 081, 082, 083, 084, 085, 086, 087
+   db  080, 081, 082, 083, 084, 085, 086, 087
+   db  080, 081, 082, 083, 084, 085, 086, 087
+   db  080, 081, 082, 083, 084, 085, 086, 087
+   db  080, 081, 082, 083, 084, 085, 086, 087
+   db  080, 081, 082, 083, 084, 085, 086, 087
+   db  080, 081, 082, 083, 084, 085, 086, 087
+   db  088, 089, 090, 091, 092, 093, 094, 095
+   db  088, 089, 090, 091, 092, 093, 094, 095
+   db  088, 089, 090, 091, 092, 093, 094, 095
+   db  088, 089, 090, 091, 092, 093, 094, 095
+   db  088, 089, 090, 091, 092, 093, 094, 095
+   db  088, 089, 090, 091, 092, 093, 094, 095
+   db  088, 089, 090, 091, 092, 093, 094, 095
+   db  088, 089, 090, 091, 092, 093, 094, 095
+  
+video_conversion_l: 
+   db  000, 000, 000, 000, 000, 000, 000, 000
+   db  032, 032, 032, 032, 032, 032, 032, 032
+   db  064, 064, 064, 064, 064, 064, 064, 064
+   db  096, 096, 096, 096, 096, 096, 096, 096
+   db  128, 128, 128, 128, 128, 128, 128, 128
+   db  160, 160, 160, 160, 160, 160, 160, 160
+   db  192, 192, 192, 192, 192, 192, 192, 192
+   db  224, 224, 224, 224, 224, 224, 224, 224
+   db  000, 000, 000, 000, 000, 000, 000, 000
+   db  032, 032, 032, 032, 032, 032, 032, 032
+   db  064, 064, 064, 064, 064, 064, 064, 064
+   db  096, 096, 096, 096, 096, 096, 096, 096
+   db  128, 128, 128, 128, 128, 128, 128, 128
+   db  160, 160, 160, 160, 160, 160, 160, 160
+   db  192, 192, 192, 192, 192, 192, 192, 192
+   db  224, 224, 224, 224, 224, 224, 224, 224
+   db  000, 000, 000, 000, 000, 000, 000, 000
+   db  032, 032, 032, 032, 032, 032, 032, 032
+   db  064, 064, 064, 064, 064, 064, 064, 064
+   db  096, 096, 096, 096, 096, 096, 096, 096
+   db  128, 128, 128, 128, 128, 128, 128, 128
+   db  160, 160, 160, 160, 160, 160, 160, 160
+   db  192, 192, 192, 192, 192, 192, 192, 192
+   db  224, 224, 224, 224, 224, 224, 224, 224
+   db  000, 000, 000, 000, 000, 000, 000, 000
+   db  032, 032, 032, 032, 032, 032, 032, 032
+   db  064, 064, 064, 064, 064, 064, 064, 064
+   db  096, 096, 096, 096, 096, 096, 096, 096
+   db  128, 128, 128, 128, 128, 128, 128, 128
+   db  160, 160, 160, 160, 160, 160, 160, 160
+   db  192, 192, 192, 192, 192, 192, 192, 192
+   db  224, 224, 224, 224, 224, 224, 224, 224
+
+  
 ball_sprite:
    db %00111100
    db %01000010
@@ -39,39 +109,76 @@ background_buffer_12    db 0,0,0,0,0,0,0,0
 background_tile         db $55,0,$AA,0,$55,0,$AA,0
 
 temp_var                db 0
+aux_var_1               db 0
    
 start:
     call draw_background
-;change border color
     ld a,3
-    out ($FE),a
+    out ($FE),a     ;change border color
 ;load ball coordinates
-    ld b,2
-    ld c,2
-    ei
-    halt
+    ei          ;enable interruptions
+    halt        ;wait for TV beam at begining 
+    ld b,12
+again:
+    
+    ld c,100
+;    call print_ball
+;hold:
+;    jp hold;
+    
+   
 gameloop:    
     call record_backround
+    ld a,2
+    out ($FE),a     ;change border color
     call print_ball
-    ld a, 4
-    call wait_routine
+    call wait_beam_init
     call print_recorded_background
-    inc b
-    inc c
-    ld a,20
-    cp b
-    jp z, again    
+    call next_action
     jp gameloop; 
 
-again:
-    ld b,2
-    ld c,2
-    jp gameloop
+wait_beam_init:
+    ld a,7
+    out ($FE),a     ;change border color
+    halt
+    ld a,1
+    out ($FE),a     ;change border color
+    ret
+
+next_action:
+    push bc
+    ld bc,#FDFE
+    in a,(c)
+    pop bc
+try_a:
+    srl a           ;flag c holds the carry
+    jp c, try_s
+    dec b
+try_s:
+    srl a           ;flag c holds the carry
+    jp c, try_d
+    inc c
+try_d:
+    srl a           ;flag c holds the carry
+    jp c, try_w
+    inc b
+try_w:
+    push bc
+    ld bc,#FBFE
+    in a,(c)
+    pop bc
+    srl a           
+    srl a          ;flag c holds the carry    
+    jp c, nothing
+    dec c
+nothing:
+    ret
 
 
 ;argument a = waiting time
 wait_routine:
     halt
+
     dec a
     jp nz,wait_routine
     ret   
@@ -92,6 +199,7 @@ deleteball:
 
     ret
     
+
 print_ball:
     ld de,ball_sprite
     ld hl,ball_sprite_mask    
@@ -99,50 +207,45 @@ print_ball:
     ret
 
 print_recorded_background:
+    ; arguments: b=x_pos(pixel)  c=y_pos(pixel)
+
+    ; use memory to video in this subroutine
+    ld a,0              ; 0 = mem2video
+    ld (temp_var), a
+
     push bc
     ;ld de,background_tile
     srl b
     srl b
     srl b
-    ld de,background_buffer_11
-    call printchar
+    ld ix,background_buffer_11
+    call transferchar
     inc b
-    ld de,background_buffer_12
-    call printchar
+    ld ix,background_buffer_12
+    call transferchar
     pop bc
     ret
 
 record_backround:
-    push bc
-    srl b                       ; remove last 3 bits from x
-    srl b
-    srl b
-    ; first char
-    ld a,1                  ; 1=video2mem
+    ; arguments: b=x_pos (pixel)  c=y_pos (pixel)
+
+    ; use memory to video in this subroutine
+    ld a,1              ; 1 = video2mem
     ld (temp_var), a
+
+    push bc
+    ;ld de,background_tile
+    srl b
+    srl b
+    srl b
     ld ix,background_buffer_11
     call transferchar
-    ; second char
     inc b
-    ld a,1                  ; 1=video2mem
-    ld (temp_var), a
     ld ix,background_buffer_12
     call transferchar
     pop bc
     ret
     
-printchar:
-    ; arguments: b=x_pos(char)  c=y_pos(char)
-    ;            de = char memory position
-    ;            hl = char mask position
-    push bc
-    ld ix, de
-    ld a,0              ; 0 = mem2video
-    ld (temp_var), a
-    call transferchar
-    pop bc                       ;recover x,y postion including x2 x1 x0
-    ret
-
 printsprite:
     ; arguments: b=x_pos   c=y_pos
     ;            de = char memory position
@@ -161,6 +264,9 @@ swipe_it:
     ld iy, sprite_mask_swipped_11   ;load destination address    
     call swipe_bitmap_mask_right
     
+    ld a,3
+    out ($FE),a     ;change border color
+    
     ; first char
     ld ix, sprite_mask_swipped_11
     ld a,2              ; 2 = apply mask (AND)
@@ -170,6 +276,11 @@ swipe_it:
     ld a,3              ; 3= apply sprite (OR)
     ld (temp_var), a
     call transferchar
+    
+    ld a,4
+    out ($FE),a     ;change border color
+
+    
     ; second char
     inc b               ; increment x pos
     ld ix, sprite_mask_swipped_12
@@ -268,16 +379,123 @@ skip_swap2:
     ret
 
 transferchar:
-; arguments: b=x_pos(char)  c=y_pos(char)
+; arguments: b=x_pos(char)  c=y_pos(pixel)
 ;            ix = char memory position
-;            a = direction    ->  0=mem2video   ; 1=video2mem 
+;            temp_var = direction    ->  0=mem2video   ; 1=video2mem 
 ;                                 2=apply mask  ; 3=apply sprite
-; variable hl = video memory
-    push bc
-    push ix
-    exx
+; variable hl = video memory address
+; variable iy = video_conversion
+    push bc     ; changing coordinates (incrementing c=y_pos)
+    push de     ; de: 16-bit version of y_pos (pixel)
+    push hl     ; video memory address calculation
+    push ix     ; char memory position will increase
+    push iy     ; calculation of LUT argumnet: coordinate to hl 
+    
+    ld a,ball_sprite_LENGTH
+    ld (aux_var_1),a
+calculate_hl:
+    ; load y position into 16-bit register
+    ld d,0
+    ld e,c
+    ; h
+    ld iy,video_conversion_h       ; calculate video offset 
+    add iy, de                      ; add the y pos
+    ld a, (iy)                     ; load the h coordinate
+    or $40                         ; add constant
+    ld h,a                         ; load it to the h video address
+    ; l
+    ld iy,video_conversion_l       ; calculate video offset 
+    add iy, de                      ; add the y pos
+    ld a,(iy)                   ; load y5y4y3
+    or b                         ; add x7x6x5x4x3
+    ld l,a                      ; store it in l
+    
+; now we have the video coordinates on hl
+    ld a,(temp_var)
+    cp 0
+    jp z, mem2video    ; decides direction of transfer
+    cp 1
+    jp z, video2mem    ; decides direction of transfer
+    cp 2
+    jp z, applymask    ; decides direction of transfer
+    cp 3
+    jp z, applysprite    ; decides direction of transfer
+mem2video:
+    ld a,(ix)           ; load a with the byte row
+    ld (hl),a           ; load byte row into video memory
+    inc ix              ; go to next sprite byte row
+    inc c;
+    jp next_row
+video2mem:
+    ld a,(hl)           ; load a with the byte row
+    ld (ix),a           ; load byte row into video memory
+    inc ix              ; go to next sprite byte row
+    inc c;
+    jp next_row
+applymask:
+    ld a,(hl)           ; load a with video info
+    and (ix)            ; apply the mask to the video info
+    ld (hl),a           ; save it back to the video mem
+    inc ix              ; go to next sprite byte row
+    inc c;
+    jp next_row
+applysprite:
+    ld a,(ix)           ; load a with the byte row
+    or (hl)
+    ld (hl),a           ; load byte row into video memory
+    inc ix              ; go to next sprite byte row
+    inc c;
+    ;jp next_row
+next_row:
+    ld a,(aux_var_1)
+    dec a
+    ld (aux_var_1),a
+    cp 0
+    jr nz,calculate_hl
+    
+transferchar_exit:
+    pop iy
     pop ix
+    pop hl
+    pop de
     pop bc
+    
+    ret
+    
+        
+
+draw_background:
+    ld b,0                              ; starting x pos
+    ld c,0                              ; starting y pos
+    ;ld ix,#3D50                         ; starting char to print
+    ld ix,background_tile               ; load the address of the char bitmap
+    ld de,8                             ; increment 8 bytes per char
+draw_background_topbot_loop:
+    ;add ix,de
+    ld a,0
+    ld (temp_var), a                    ; memory to video
+    call transferchar2
+    ld a,b
+    add 1                            ; increment x pos
+    ld b,a
+    ;inc b
+    ld a,32
+    cp b                                ; compare x pos with 256 (0) to detect end of columns
+    jp nz,draw_background_topbot_loop
+    ld b,0                              ; reset starting x pos
+    inc c                               ; go to next row
+    ld a,24                           
+    cp c                                ; compare y pos with 24 to detect end of columns
+    jp nz,draw_background_topbot_loop
+    ret
+    
+transferchar2:
+; arguments: bc : x_pos(char)  y_pos(char)
+;            ix : char memory position
+;            temp_var  direction    ->  0=mem2video   ; 1=video2mem 
+    push de  ; d as a counter
+    push hl  ; video memory address
+    push ix  ; incrementing it during the routine
     ld h, $40
 ; use x3-7
     ld l,b
@@ -297,85 +515,35 @@ transferchar:
     or h
     ld h,a
 ; now we have the video coordinates on hl
-    push bc
-    ld b,ball_sprite_LENGTH
+    ld d,ball_sprite_LENGTH
     ld a,(temp_var)
-    jp z, mem2video    ; decides direction of transfer
+    cp a
+    jp z, mem2video2    ; decides direction of transfer
     dec a
-    jp z, video2mem    ; decides direction of transfer
-    dec a
-    jp z, applymask    ; decides direction of transfer
-    dec a
-    jp z, applysprite    ; decides direction of transfer
-mem2video:
+    jp z, video2mem2    ; decides direction of transfer
+mem2video2:
     ld a,(ix)           ; load a with the byte row
     ld (hl),a           ; load byte row into video memory
     inc ix              ; go to next sprite byte row
     inc h               ; go to next row in the video memory
-    dec b               ; decrement row counter
-    jr nz,mem2video           ; if B not zero, jump back to top of loop (condition,relative)
-    pop bc
-    exx
-    ret
-video2mem:
+    dec d               ; decrement row counter
+    jr nz,mem2video2           ; if B not zero, jump back to top of loop (condition,relative)
+    jp transferchar2_exit
+video2mem2:
     ld a,(hl)           ; load a with the byte row
     ld (ix),a           ; load byte row into video memory
     inc ix              ; go to next sprite byte row
     inc h               ; go to next row in the video memory
-    dec b               ; decrement row counter
-    jr nz,video2mem           ; if B not zero, jump back to top of loop (condition,relative)
-    pop bc
-    exx
+    dec d               ; decrement row counter
+    jr nz,video2mem2           ; if B not zero, jump back to top of loop (condition,relative)
+transferchar2_exit:    
+    pop ix
+    pop hl
+    pop de
     ret
-applymask:
-    ld a,(hl)           ; load a with video info
-    and (ix)            ; apply the mask to the video info
-    ld (hl),a           ; save it back to the video mem
-    inc ix              ; go to next sprite byte row
-    inc h               ; go to next row in the video memory
-    dec b               ; decrement row counter
-    jr nz,applymask           ; if B not zero, jump back to top of loop (condition,relative)
-    pop bc
-    exx
-    ret
-applysprite:
-    ld a,(ix)           ; load a with the byte row
-    or (hl)
-    ld (hl),a           ; load byte row into video memory
-    inc ix              ; go to next sprite byte row
-    inc h               ; go to next row in the video memory
-    dec b               ; decrement row counter
-    jr nz,applysprite           ; if B not zero, jump back to top of loop (condition,relative)
-    pop bc
-    exx
-    ret
-        
-
-draw_background:
-    ld b,0                              ; starting x pos
-    ld c,0                              ; starting y pos
-    ld de,15360  
-    ld hl,8
-draw_background_topbot_loop:
-    ;ld de,background_tile               ; load the address of the char bitmap
-    add de,hl
-    call printchar
-    ld a,b
-    add 1                            ; increment x pos
-    ld b,a
-    ;inc b
-    ld a,32
-    cp b                                ; compare x pos with 256 (0) to detect end of columns
-    jp nz,draw_background_topbot_loop
-    ld b,0                              ; reset starting x pos
-    inc c                               ; go to next row
-    ld a,24                           
-    cp c                                ; compare y pos with 24 to detect end of columns
-    jp nz,draw_background_topbot_loop
-    ret
-    
-    
 
 ; Deployment: Snapshot
    SAVESNA "load.sna", start
    ;SAVETAP "load.tap", start
+   
+   
